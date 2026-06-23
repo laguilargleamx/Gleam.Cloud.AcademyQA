@@ -11,8 +11,8 @@ ALGORITHM = "HS256"
 TOKEN_TTL = timedelta(hours=12)
 
 USERS = {
-    os.environ["STUDENT_USERNAME"]: {"password": os.environ["STUDENT_PASSWORD"], "role": "student"},
-    os.environ["ADMIN_USERNAME"]: {"password": os.environ["ADMIN_PASSWORD"], "role": "admin"},
+    os.environ["STUDENT_USERNAME"]: {"password": os.environ["STUDENT_PASSWORD"], "role": "student", "display_name": "Diana"},
+    os.environ["ADMIN_USERNAME"]: {"password": os.environ["ADMIN_PASSWORD"], "role": "admin", "display_name": "Luis"},
 }
 
 bearer_scheme = HTTPBearer()
@@ -27,6 +27,7 @@ class LoginResponse(BaseModel):
     token: str
     role: str
     username: str
+    display_name: str
 
 
 def authenticate(username: str, password: str) -> LoginResponse:
@@ -40,7 +41,7 @@ def authenticate(username: str, password: str) -> LoginResponse:
         "exp": datetime.now(timezone.utc) + TOKEN_TTL,
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    return LoginResponse(token=token, role=user["role"], username=username)
+    return LoginResponse(token=token, role=user["role"], username=username, display_name=user["display_name"])
 
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> dict:

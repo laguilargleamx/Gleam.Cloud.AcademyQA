@@ -37,12 +37,11 @@ export default function App() {
     setResultData(null);
   };
 
-  const startExam = async (name) => {
-    if (!name) { showToast('Escribe tu nombre para continuar'); return; }
+  const startExam = async () => {
     try {
       const data = await getExam(EXAM_ID);
       setExamData(data);
-      setStudentName(name);
+      setStudentName(auth.display_name);
       setStep('exam');
     } catch (e) {
       showToast(e.message || 'No se pudo conectar con el servidor');
@@ -92,7 +91,7 @@ export default function App() {
         {!auth && <Login onLogin={setAuth} onError={showToast} />}
         {auth?.role === 'student' && (
           <>
-            {step === 'name' && <NameStep onStart={startExam} />}
+            {step === 'name' && <NameStep name={auth.display_name} onStart={startExam} />}
             {step === 'exam' && examData && (
               <ExamStep
                 examData={examData}
