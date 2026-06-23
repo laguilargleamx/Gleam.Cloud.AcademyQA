@@ -3,11 +3,12 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import require_admin
 from app.database import get_db
 from app.models import ExamResult
 from app.schemas import ExamResultOut
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 
 @router.get("/results", response_model=List[ExamResultOut])

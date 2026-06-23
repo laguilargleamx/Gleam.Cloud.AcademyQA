@@ -36,5 +36,5 @@ jobs:
             --region=us-central1 \
             --allow-unauthenticated \
             --add-cloudsql-instances="${{ vars.GCP_SQL_CONNECTION_NAME }}" \
-            --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }},STUDENT_USERNAME=${{ vars.STUDENT_USERNAME }},STUDENT_PASSWORD=${{ secrets.STUDENT_PASSWORD }},ADMIN_USERNAME=${{ vars.ADMIN_USERNAME }},ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }},AUTH_SECRET_KEY=${{ secrets.AUTH_SECRET_KEY }}" \
             --quiet

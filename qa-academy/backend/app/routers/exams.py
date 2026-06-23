@@ -4,13 +4,14 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import get_current_user
 from app.database import get_db
 from app.exams_data import EXAMS
 from app.models import ExamResult
 from app.scoring import calculate_score
 from app.schemas import ExamSubmission
 
-router = APIRouter(tags=["exams"])
+router = APIRouter(tags=["exams"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/exams")

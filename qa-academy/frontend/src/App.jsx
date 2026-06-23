@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
-import { getExam, submitExam } from './api';
+import { getAuth, getExam, logout, submitExam } from './api';
 import Header from './components/Header';
 import Toast from './components/Toast';
+import Login from './components/Login';
 import NameStep from './components/NameStep';
 import ExamStep from './components/ExamStep';
 import ResultStep from './components/ResultStep';
@@ -10,7 +11,7 @@ import AdminPage from './components/AdminPage';
 const EXAM_ID = 'modulo1';
 
 export default function App() {
-  const [page, setPage] = useState('exam');
+  const [auth, setAuth] = useState(getAuth());
   const [step, setStep] = useState('name');
   const [examData, setExamData] = useState(null);
   const [studentName, setStudentName] = useState('');
@@ -26,6 +27,16 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   };
 
+  const handleLogout = () => {
+    logout();
+    setAuth(null);
+    setStep('name');
+    setExamData(null);
+    setStudentName('');
+    setUserAnswers({});
+    setResultData(null);
+  };
+
   const startExam = async (name) => {
     if (!name) { showToast('Escribe tu nombre para continuar'); return; }
     try {
@@ -33,8 +44,8 @@ export default function App() {
       setExamData(data);
       setStudentName(name);
       setStep('exam');
-    } catch {
-      showToast('No se pudo conectar con el servidor');
+    } catch (e) {
+      showToast(e.message || 'No se pudo conectar con el servidor');
     }
   };
 
@@ -60,8 +71,8 @@ export default function App() {
       const data = await submitExam(EXAM_ID, studentName, answers);
       setResultData(data);
       setStep('result');
-    } catch {
-      showToast('Error al entregar el examen. Intenta de nuevo.');
+    } catch (e) {
+      showToast(e.message || 'Error al entregar el examen. Intenta de nuevo.');
     }
   };
 
@@ -76,9 +87,10 @@ export default function App() {
 
   return (
     <>
-      <Header page={page} onNavigate={setPage} />
+      <Header username={auth?.username} onLogout={handleLogout} />
       <main>
-        {page === 'exam' && (
+        {!auth && <Login onLogin={setAuth} onError={showToast} />}
+        {auth?.role === 'student' && (
           <>
             {step === 'name' && <NameStep onStart={startExam} />}
             {step === 'exam' && examData && (
@@ -96,7 +108,7 @@ export default function App() {
             )}
           </>
         )}
-        {page === 'admin' && <AdminPage onError={showToast} />}
+        {auth?.role === 'admin' && <AdminPage onError={showToast} />}
       </main>
       <Toast message={toast} />
     </>

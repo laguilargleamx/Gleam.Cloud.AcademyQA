@@ -1,11 +1,13 @@
-export default function Header({ page, onNavigate }) {
+export default function Header({ username, onLogout }) {
   return (
     <header>
       <div className="logo">QA<span>Academy</span></div>
-      <nav className="nav-links">
-        <a className={page === 'exam' ? 'active' : ''} onClick={() => onNavigate('exam')}>Examen</a>
-        <a className={page === 'admin' ? 'active' : ''} onClick={() => onNavigate('admin')}>Admin</a>
-      </nav>
+      {username && (
+        <nav className="nav-links">
+          <span style={{ color: 'var(--muted)' }}>{username}</span>
+          <a onClick={onLogout}>Cerrar sesión</a>
+        </nav>
+      )}
     </header>
   );
 }
