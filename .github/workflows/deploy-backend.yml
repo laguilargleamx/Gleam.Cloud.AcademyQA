@@ -1,0 +1,40 @@
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "qa-academy/backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        working-directory: qa-academy/backend
+        run: |
+          gcloud run deploy qa-academy-backend \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --source=. \
+            --region=us-central1 \
+            --allow-unauthenticated \
+            --add-cloudsql-instances="${{ vars.GCP_SQL_CONNECTION_NAME }}" \
+            --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            --quiet

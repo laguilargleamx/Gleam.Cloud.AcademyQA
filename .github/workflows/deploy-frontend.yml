@@ -1,0 +1,45 @@
+name: Deploy frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "qa-academy/frontend/**"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: qa-academy/frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: qa-academy/frontend
+        env:
+          VITE_API_URL: ${{ vars.BACKEND_URL }}
+        run: npm run build
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Deploy to Firebase Hosting
+        working-directory: qa-academy/frontend
+        run: |
+          npx firebase-tools deploy --only hosting --project "${{ vars.GCP_PROJECT_ID }}" --non-interactive

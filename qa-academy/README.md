@@ -5,11 +5,37 @@ Plataforma para exámenes y seguimiento de Diana en su aprendizaje de QA.
 ## Stack
 - **Backend:** Python + FastAPI (contenedor en Cloud Run)
 - **BD:** PostgreSQL (Cloud SQL)
-- **Frontend:** React + Vite
+- **Frontend:** React + Vite (Firebase Hosting)
+- **Proyecto GCP:** `qa-academy-prod`
+- **CI/CD:** GitHub Actions, autenticado a GCP vía Workload Identity Federation (sin llaves de service account)
 
 ---
 
-## 🚀 Deploy del Backend en Google Cloud Run
+## 🤖 Deploy automático (CI/CD)
+
+Cada push a `main` dispara el deploy correspondiente según qué carpeta cambió:
+
+- Cambios en `qa-academy/backend/**` → [.github/workflows/deploy-backend.yml](../.github/workflows/deploy-backend.yml) hace `gcloud run deploy --source .`
+- Cambios en `qa-academy/frontend/**` → [.github/workflows/deploy-frontend.yml](../.github/workflows/deploy-frontend.yml) hace `npm run build` + `firebase deploy --only hosting`
+
+Ambos workflows se pueden disparar manualmente desde la pestaña Actions (`workflow_dispatch`).
+
+Variables/secrets configurados en el repo (Settings → Secrets and variables → Actions):
+
+| Nombre | Tipo | Valor |
+|--------|------|-------|
+| `GCP_PROJECT_ID` | variable | `qa-academy-prod` |
+| `GCP_WIF_PROVIDER` | variable | provider de Workload Identity Federation |
+| `GCP_SERVICE_ACCOUNT` | variable | `github-deployer@qa-academy-prod.iam.gserviceaccount.com` |
+| `GCP_SQL_CONNECTION_NAME` | variable | `qa-academy-prod:us-central1:qa-academy-db` |
+| `BACKEND_URL` | variable | URL pública del servicio en Cloud Run |
+| `DATABASE_URL` | secret | cadena de conexión completa a Cloud SQL |
+
+La service account `github-deployer` solo puede ser asumida por workflows que corran específicamente en `laguilargleamx/Gleam.Cloud.AcademyQA` (restricción a nivel del provider de Workload Identity Federation).
+
+---
+
+## 🚀 Deploy manual del Backend en Google Cloud Run
 
 ### 1. Requisitos
 - Tener `gcloud` CLI instalado y autenticado (`gcloud auth login`)
