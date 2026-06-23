@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QA Academy — arquitectura</title>
+<script>
+  (function () {
+    const saved = localStorage.getItem('theme');
+    const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', dark);
+  })();
+</script>
+<style>
+  :root {
+    --bg: #FAF9F5; --surface: #FFFFFF; --surface2: #F0EEE6;
+    --ink: #141413; --body: #3D3D3A; --muted: #87867F;
+    --line: #D1CFC5; --line-soft: #E6E3DA;
+    --clay: #D97757; --clay-soft: rgba(217,119,87,0.10);
+    --olive: #788C5D; --olive-soft: rgba(120,140,93,0.12);
+    --gold: #C9A45C; --blue: #5B7E96;
+    --zone: rgba(20,20,19,0.025); --zone-line: #D1CFC5;
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  html.dark {
+    --bg: #141413; --surface: #1F1F1D; --surface2: #2A2A28;
+    --ink: #FAF9F5; --body: #D1CFC5; --muted: #87867F;
+    --line: #3D3D3A; --line-soft: #2A2A28;
+    --clay: #E48A6E; --clay-soft: rgba(228,138,110,0.14);
+    --olive: #9DB07C; --olive-soft: rgba(157,176,124,0.16);
+    --gold: #D4B36F; --blue: #7FA3BC;
+    --zone: rgba(250,249,245,0.03); --zone-line: #3D3D3A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--body); font-family: var(--sans);
+    -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  /* ── top bar ─────────────────────────────── */
+  .bar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 12px 20px; border-bottom: 1px solid var(--line-soft); flex: none;
+  }
+  .bar h1 { font-family: var(--serif); font-weight: 500; font-size: 19px; color: var(--ink); letter-spacing: -0.01em; }
+  .bar .sub { font-family: var(--mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  .spacer { flex: 1; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+    padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px;
+    background: transparent; color: var(--muted); cursor: pointer; transition: all .15s ease;
+  }
+  .chip:hover { color: var(--ink); border-color: var(--muted); }
+  .chip.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+  #themeToggle {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: transparent; color: var(--muted); cursor: pointer;
+  }
+  #themeToggle:hover { color: var(--ink); border-color: var(--muted); }
+
+  /* ── stage ───────────────────────────────── */
+  .stage { flex: 1; position: relative; min-height: 0; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* zones */
+  .zone rect { fill: var(--zone); stroke: var(--zone-line); stroke-width: 1; stroke-dasharray: 5 5; rx: 16; }
+  .zone .ztitle { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; fill: var(--muted); }
+  .zone .zsub { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); opacity: 0.75; }
+
+  /* nodes */
+  .node { cursor: pointer; }
+  .node rect { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; rx: 10; transition: stroke .15s ease, filter .15s ease; }
+  .node:hover rect { stroke: var(--muted); }
+  .node.sel rect { stroke: var(--clay) !important; stroke-width: 2; }
+  .node .t  { font-family: var(--sans); font-size: 14px; font-weight: 600; fill: var(--ink); pointer-events: none; }
+  .node .m  { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); pointer-events: none; }
+  .node .k  { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; fill: var(--clay); pointer-events: none; }
+  .node.gate rect { fill: var(--clay-soft); stroke: var(--clay); }
+  .node.store rect { fill: var(--surface2); }
+  .node.infra rect { fill: var(--olive-soft); stroke: var(--olive); }
+  .node.ext rect { stroke-dasharray: 6 3; }
+
+  /* edges */
+  .edge { stroke: var(--muted); stroke-width: 1.6; fill: none; marker-end: url(#a-mut); transition: opacity .2s ease, stroke .2s ease; }
+  .edge.dash { stroke-dasharray: 5 4; }
+  .elbl { font-family: var(--mono); font-size: 10px; fill: var(--muted); transition: opacity .2s ease; }
+
+  /* flow highlighting */
+  .stage.flowing .edge { opacity: 0.12; }
+  .stage.flowing .elbl { opacity: 0.12; }
+  .stage.flowing .node { opacity: 0.30; }
+  .stage.flowing .zone { opacity: 0.45; }
+  .stage.flowing .edge.lit {
+    opacity: 1; stroke: var(--clay); marker-end: url(#a-clay);
+    stroke-dasharray: 7 5; animation: march 0.9s linear infinite;
+  }
+  .stage.flowing .elbl.lit { opacity: 1; fill: var(--clay); font-weight: 700; }
+  .stage.flowing .node.lit { opacity: 1; }
+  .stage.flowing .node.lit rect { stroke: var(--clay); }
+  @keyframes march { to { stroke-dashoffset: -12; } }
+  @media (prefers-reduced-motion: reduce) { .stage.flowing .edge.lit { animation: none; } }
+
+  /* ── floating cards ──────────────────────── */
+  .card {
+    position: absolute; max-width: 360px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+  }
+  #detail { right: 16px; bottom: 16px; width: 340px; }
+  #detail h3 { font-family: var(--serif); font-weight: 500; font-size: 17px; color: var(--ink); margin-bottom: 2px; }
+  #detail .meta { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-bottom: 8px; }
+  #detail p { font-size: 12.5px; line-height: 1.55; }
+  #detail p code, #flowcap code { font-family: var(--mono); font-size: 11px; color: var(--clay); background: var(--clay-soft); padding: 1px 4px; border-radius: 4px; }
+  #flowcap { left: 16px; bottom: 16px; max-width: 460px; display: none; }
+  #flowcap.show { display: block; }
+  #flowcap .fname { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--clay); margin-bottom: 6px; }
+  #flowcap ol { margin-left: 18px; }
+  #flowcap li { font-size: 12.5px; line-height: 1.55; margin-bottom: 2px; }
+  .src { position: absolute; top: 10px; right: 16px; font-family: var(--mono); font-size: 10px; color: var(--muted); opacity: 0.8; }
+  @media (max-width: 880px) {
+    body { overflow: auto; }
+    .stage { min-height: 70vh; }
+    #detail { position: static; width: auto; margin: 10px 16px; }
+    #flowcap { position: static; margin: 0 16px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div>
+    <h1>QA Academy — la arquitectura</h1>
+    <div class="sub">React + Vite · FastAPI · PostgreSQL · Cloud Run</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="chips" id="chips">
+    <button class="chip on" data-flow="all">Todo</button>
+    <button class="chip" data-flow="exam">Tomar el examen</button>
+    <button class="chip" data-flow="admin">Panel admin</button>
+    <button class="chip" data-flow="deploy-be">Deploy backend</button>
+    <button class="chip" data-flow="deploy-fe">Deploy frontend</button>
+  </div>
+  <button id="themeToggle">Theme</button>
+</div>
+
+<div class="stage" id="stage">
+<svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Diagrama de arquitectura de QA Academy">
+  <defs>
+    <marker id="a-mut" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted)"/>
+    </marker>
+    <marker id="a-clay" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clay)"/>
+    </marker>
+  </defs>
+
+  <!-- ── zones ─────────────────────────────── -->
+  <g class="zone" id="z-clients">
+    <rect x="40" y="90" width="260" height="320"/>
+    <text class="ztitle" x="60" y="120">Clientes</text>
+    <text class="zsub" x="60" y="138">quién usa la app</text>
+  </g>
+  <g class="zone" id="z-frontend">
+    <rect x="320" y="90" width="400" height="660"/>
+    <text class="ztitle" x="340" y="120">Frontend</text>
+    <text class="zsub" x="340" y="138">React + Vite · servido como dist/ estático</text>
+  </g>
+  <g class="zone" id="z-backend">
+    <rect x="740" y="90" width="440" height="660"/>
+    <text class="ztitle" x="760" y="120">Backend</text>
+    <text class="zsub" x="760" y="138">FastAPI · contenedor en Cloud Run</text>
+  </g>
+  <g class="zone" id="z-data">
+    <rect x="1200" y="90" width="360" height="260"/>
+    <text class="ztitle" x="1220" y="120">Data</text>
+    <text class="zsub" x="1220" y="138">PostgreSQL</text>
+  </g>
+  <g class="zone" id="z-infra">
+    <rect x="1200" y="380" width="360" height="370"/>
+    <text class="ztitle" x="1220" y="410">Deploy / Infra</text>
+    <text class="zsub" x="1220" y="428">backend en contenedor · frontend estático</text>
+  </g>
+
+  <!-- ── edges ─────────────────────────────── -->
+  <path class="edge" id="e1" d="M275,210 C 310,205 315,185 345,180"/>
+  <path class="edge" id="e2" d="M510,210 L510,230"/>
+  <path class="edge" id="e3" d="M510,320 L510,340"/>
+  <path class="edge" id="e4" d="M675,275 C 683,330 683,410 675,465"/>
+  <path class="edge" id="e5" d="M675,275 C 699,360 699,480 675,570"/>
+  <path class="edge" id="e6" d="M675,275 C 691,400 691,560 675,660"/>
+  <path class="edge" id="e7" d="M345,570 C 325,500 325,420 345,370"/>
+  <path class="edge" id="e8" d="M675,370 C 720,360 730,310 765,290"/>
+  <path class="edge" id="e9" d="M675,370 C 720,380 730,390 765,395"/>
+  <path class="edge" id="e10" d="M765,290 C 748,400 748,500 765,570"/>
+  <path class="edge" id="e11" d="M1135,290 C 1148,350 1148,440 1135,480"/>
+  <path class="edge" id="e12" d="M950,510 L950,530"/>
+  <path class="edge" id="e13" d="M1135,310 C 1162,450 1162,580 1135,665"/>
+  <path class="edge" id="e14" d="M765,395 C 754,500 754,600 765,665"/>
+  <path class="edge" id="e15" d="M1135,665 C 1180,600 1180,300 1225,230"/>
+  <path class="edge dash" id="e16" d="M950,220 L950,240"/>
+  <path class="edge dash" id="e17" d="M1135,185 C 1176,280 1176,340 1135,395"/>
+  <path class="edge" id="e18" d="M1380,520 L1380,540"/>
+  <path class="edge" id="e19" d="M1535,585 C 1555,480 1555,300 1535,230"/>
+  <path class="edge dash" id="e20" d="M675,180 L712,180 L712,900 L1380,900 L1380,650"/>
+  <path class="edge dash" id="e21" d="M1225,585 L1205,585 L1205,920 L708,920 L708,370 L675,370"/>
+
+  <!-- edge labels -->
+  <text class="elbl" data-e="e1" x="288" y="195">carga la app</text>
+  <text class="elbl" data-e="e3" x="520" y="333">getExam · submitExam</text>
+  <text class="elbl" data-e="e4" x="700" y="368" text-anchor="end">step = exam</text>
+  <text class="elbl" data-e="e5" x="712" y="420">page = admin</text>
+  <text class="elbl" data-e="e7" x="300" y="460" text-anchor="end">getAdminResults · detail</text>
+  <text class="elbl" data-e="e8" x="700" y="335" text-anchor="middle">GET/POST /exams/*</text>
+  <text class="elbl" data-e="e9" x="705" y="412">GET /admin/*</text>
+  <text class="elbl" data-e="e10" x="705" y="450" text-anchor="end">deepcopy + strip "answer"</text>
+  <text class="elbl" data-e="e11" x="1158" y="400">calculate_score()</text>
+  <text class="elbl" data-e="e12" x="960" y="522">lee EXAMS</text>
+  <text class="elbl" data-e="e13" x="1168" y="500">INSERT ExamResult</text>
+  <text class="elbl" data-e="e14" x="705" y="565" text-anchor="end">SELECT ExamResult</text>
+  <text class="elbl" data-e="e15" x="1190" y="460">SQLAlchemy / psycopg2</text>
+  <text class="elbl" data-e="e17" x="1153" y="300">include_router()</text>
+  <text class="elbl" data-e="e18" x="1390" y="533">gcloud run deploy --source .</text>
+  <text class="elbl" data-e="e19" x="1565" y="420" text-anchor="end">--add-cloudsql-instances</text>
+  <text class="elbl" data-e="e20" x="712" y="855" text-anchor="middle">npm run build → dist/</text>
+  <text class="elbl" data-e="e21" x="708" y="745" text-anchor="middle">VITE_API_URL (build de producción)</text>
+
+  <!-- ── nodes: clientes ───────────────────── -->
+  <g class="node" data-k="browser">
+    <rect x="65" y="150" width="210" height="120"/>
+    <text class="t" x="85" y="180">Browser</text>
+    <text class="m" x="85" y="202">Diana (estudiante) o</text>
+    <text class="m" x="85" y="218">Gerardo (admin)</text>
+    <text class="k" x="85" y="244">misma SPA · sin login todavía</text>
+  </g>
+
+  <!-- ── nodes: frontend ────────────────────── -->
+  <g class="node" data-k="spa">
+    <rect x="345" y="150" width="330" height="60"/>
+    <text class="t" x="365" y="175">SPA estática (dist/)</text>
+    <text class="m" x="365" y="196">build de Vite, sin servidor propio</text>
+  </g>
+  <g class="node gate" data-k="appjsx">
+    <rect x="345" y="230" width="330" height="90"/>
+    <text class="t" x="365" y="255">App.jsx</text>
+    <text class="k" x="365" y="271">máquina de estados</text>
+    <text class="m" x="365" y="291">page: exam/admin · step: name→exam→result</text>
+  </g>
+  <g class="node" data-k="apijs">
+    <rect x="345" y="340" width="330" height="60"/>
+    <text class="t" x="365" y="365">api.js</text>
+    <text class="m" x="365" y="386">VITE_API_URL · única capa de fetch</text>
+  </g>
+  <g class="node" data-k="examcomp">
+    <rect x="345" y="420" width="330" height="90"/>
+    <text class="t" x="365" y="445">Componentes de examen</text>
+    <text class="m" x="365" y="466">NameStep · ExamStep · QuestionCard</text>
+    <text class="m" x="365" y="483">ResultStep</text>
+  </g>
+  <g class="node" data-k="admincomp">
+    <rect x="345" y="530" width="330" height="80"/>
+    <text class="t" x="365" y="555">Componentes admin</text>
+    <text class="m" x="365" y="576">AdminPage · ResultDetailModal</text>
+    <text class="m" x="365" y="594">fetch propio, no pasa por App.jsx</text>
+  </g>
+  <g class="node" data-k="headertoast">
+    <rect x="345" y="630" width="330" height="60"/>
+    <text class="t" x="365" y="655">Header · Toast</text>
+    <text class="m" x="365" y="676">navegación entre páginas · errores de red</text>
+  </g>
+
+  <!-- ── nodes: backend ─────────────────────── -->
+  <g class="node" data-k="mainpy">
+    <rect x="765" y="150" width="370" height="70"/>
+    <text class="t" x="785" y="178">main.py</text>
+    <text class="m" x="785" y="200">CORS · monta routers · crea tablas al iniciar</text>
+  </g>
+  <g class="node gate" data-k="routerexams">
+    <rect x="765" y="240" width="370" height="100"/>
+    <text class="t" x="785" y="265">routers/exams.py</text>
+    <text class="m" x="785" y="285">GET /exams · GET /exams/{id}</text>
+    <text class="m" x="785" y="301">POST /exams/{id}/submit</text>
+    <text class="k" x="785" y="323">deepcopy antes de quitar "answer"</text>
+  </g>
+  <g class="node" data-k="routeradmin">
+    <rect x="765" y="360" width="370" height="70"/>
+    <text class="t" x="785" y="388">routers/admin.py</text>
+    <text class="m" x="785" y="410">GET /admin/results · GET /admin/results/{id}</text>
+  </g>
+  <g class="node" data-k="scoring">
+    <rect x="765" y="450" width="370" height="60"/>
+    <text class="t" x="785" y="475">scoring.py</text>
+    <text class="m" x="785" y="496">calculate_score() — función pura</text>
+  </g>
+  <g class="node store" data-k="examsdata">
+    <rect x="765" y="530" width="370" height="80"/>
+    <text class="t" x="785" y="555">exams_data.py</text>
+    <text class="m" x="785" y="576">EXAMS — diccionario hardcodeado</text>
+    <text class="m" x="785" y="594">única fuente de verdad del examen</text>
+  </g>
+  <g class="node store" data-k="dbmodels">
+    <rect x="765" y="630" width="370" height="70"/>
+    <text class="t" x="785" y="658">database.py · models.py</text>
+    <text class="m" x="785" y="680">SQLAlchemy · tabla ExamResult</text>
+  </g>
+
+  <!-- ── nodes: data ─────────────────────────── -->
+  <g class="node store" data-k="postgres">
+    <rect x="1225" y="160" width="310" height="140"/>
+    <text class="t" x="1245" y="195">PostgreSQL</text>
+    <text class="k" x="1245" y="213">Cloud SQL</text>
+    <text class="m" x="1245" y="239">tabla exam_results</text>
+    <text class="m" x="1245" y="257">answers guardado como JSON</text>
+  </g>
+
+  <!-- ── nodes: infra ─────────────────────────── -->
+  <g class="node infra" data-k="dockerfile">
+    <rect x="1225" y="450" width="310" height="70"/>
+    <text class="t" x="1245" y="478">Dockerfile</text>
+    <text class="m" x="1245" y="500">python:3.12-slim · CMD uvicorn app.main:app</text>
+  </g>
+  <g class="node infra" data-k="cloudrun">
+    <rect x="1225" y="540" width="310" height="90"/>
+    <text class="t" x="1245" y="568">Cloud Run</text>
+    <text class="m" x="1245" y="589">gcloud run deploy --source .</text>
+    <text class="m" x="1245" y="607">escala a cero sin tráfico</text>
+  </g>
+  <g class="node infra ext" data-k="statichost">
+    <rect x="1225" y="650" width="310" height="80"/>
+    <text class="t" x="1245" y="678">Hosting estático</text>
+    <text class="m" x="1245" y="699">Firebase / Cloud Storage + CDN</text>
+  </g>
+</svg>
+
+  <div class="src">qa-academy/ · CLAUDE.md</div>
+
+  <div class="card" id="flowcap">
+    <div class="fname" id="f-name"></div>
+    <ol id="f-steps"></ol>
+  </div>
+
+  <div class="card" id="detail">
+    <h3 id="d-title">Click en cualquier nodo</h3>
+    <div class="meta" id="d-meta">detalle del componente</div>
+    <p id="d-body">Cada caja es clicable. Los chips de arriba iluminan las rutas reales de la app — tomar el examen, ver el panel admin, y los dos caminos de deploy.</p>
+  </div>
+</div>
+<script>
+const DETAIL = {
+  browser: { t:"Browser", m:"cliente · sin auth todavía", b:"Misma SPA para los dos roles. Diana usa la pestaña Examen; Gerardo, la pestaña Admin. El login para cada uno está en el roadmap, no implementado aún." },
+  spa: { t:"SPA estática (dist/)", m:"frontend · build de Vite", b:"<code>npm run build</code> genera HTML/JS/CSS estáticos en <code>frontend/dist/</code>. No necesita servidor propio — se sirve desde cualquier hosting estático (Firebase, Cloud Storage + CDN) o se abre en local con <code>npm run dev</code>." },
+  appjsx: { t:"App.jsx", m:"dueño del estado de alto nivel", b:"Controla qué página se ve (<code>exam</code> / <code>admin</code>) y en qué paso del examen está el alumno (<code>name → exam → result</code>), más el toast compartido. El resto de los componentes son en su mayoría presentacionales." },
+  apijs: { t:"api.js", m:"única capa de fetch", b:"Todo el tráfico hacia el backend pasa por aquí. La URL base viene de <code>VITE_API_URL</code>, una variable de Vite que se inyecta en <b>build time</b> — no se puede cambiar después de generar el <code>dist/</code>." },
+  examcomp: { t:"Componentes de examen", m:"NameStep · ExamStep · QuestionCard · ResultStep", b:"Presentacionales: reciben todo por props desde App.jsx. ExamStep calcula el progreso en vivo; ResultStep pinta el detalle pregunta por pregunta tras el submit." },
+  admincomp: { t:"Componentes admin", m:"AdminPage · ResultDetailModal", b:"A diferencia de los componentes de examen, <b>AdminPage maneja su propio fetch</b> y el estado del modal de detalle de forma independiente — no pasa por el estado de App.jsx." },
+  headertoast: { t:"Header · Toast", m:"siempre montados", b:"Header controla la navegación entre Examen y Admin. Toast muestra errores de red o validaciones simples, como recordar que hace falta escribir el nombre." },
+  mainpy: { t:"main.py", m:"app/main.py", b:"Crea la app de FastAPI, agrega CORS (<code>allow_origins=[\"*\"]</code> — abierto por ahora), corre <code>Base.metadata.create_all()</code> al iniciar, y monta los dos routers." },
+  routerexams: { t:"routers/exams.py", m:"GET /exams · GET /exams/{id} · POST /exams/{id}/submit", b:"<b>Detalle que mordió una vez:</b> <code>GET /exams/{id}</code> tiene que devolver un <code>copy.deepcopy()</code> del examen antes de quitar la respuesta correcta. La primera versión mutaba el diccionario <code>EXAMS</code> directamente — después de la primera consulta, calificar cualquier intento fallaba porque la respuesta correcta ya no existía en memoria." },
+  routeradmin: { t:"routers/admin.py", m:"GET /admin/results · GET /admin/results/{id}", b:"Solo lectura sobre los <code>ExamResult</code> ya guardados. No conoce el contenido de los exámenes, solo lo que quedó persistido en la base." },
+  scoring: { t:"scoring.py", m:"calculate_score() — función pura", b:"Recorre las respuestas del alumno contra <code>EXAMS</code> y devuelve el puntaje total más el detalle pregunta por pregunta. Sin efectos secundarios, sin acceso a la base de datos." },
+  examsdata: { t:"exams_data.py", m:"EXAMS — diccionario hardcodeado", b:"Única fuente de verdad de preguntas, opciones y respuestas correctas. No hay tabla ni panel para autorear exámenes — agregar un módulo nuevo significa editar este diccionario a mano." },
+  dbmodels: { t:"database.py · models.py", m:"SQLAlchemy", b:"Una sola tabla, <code>ExamResult</code>: una fila por examen entregado, con el detalle de calificación guardado como JSON en la columna <code>answers</code> en vez de filas normalizadas." },
+  postgres: { t:"PostgreSQL", m:"Cloud SQL", b:"<code>DATABASE_URL</code> por defecto apunta a <code>localhost/qaacademy</code> para desarrollo. En producción se conecta vía socket Unix de Cloud SQL." },
+  dockerfile: { t:"Dockerfile", m:"backend/Dockerfile", b:"Imagen <code>python:3.12-slim</code>. El <code>CMD</code> usa la forma shell a propósito, para poder expandir <code>${PORT:-8080}</code> — Cloud Run inyecta ese puerto en runtime." },
+  cloudrun: { t:"Cloud Run", m:"gcloud run deploy --source .", b:"Construye la imagen desde el Dockerfile y la publica directamente, sin pasar por Artifact Registry a mano. El servicio escala a cero cuando no hay tráfico." },
+  statichost: { t:"Hosting estático", m:"Firebase / Cloud Storage + CDN", b:"Cualquier hosting estático sirve <code>frontend/dist/</code>. No corre código del lado del servidor — toda la lógica vive en el navegador y en el backend de Cloud Run." },
+};
+
+const FLOWS = {
+  exam: {
+    name: "Tomar el examen",
+    edges: ["e1","e2","e3","e4","e8","e10","e11","e12","e13","e15"],
+    nodes: ["browser","spa","appjsx","apijs","examcomp","routerexams","examsdata","scoring","dbmodels","postgres"],
+    steps: ["Diana escribe su nombre y App.jsx pasa a <code>step=\"exam\"</code>","api.js hace <code>GET /exams/modulo1</code>; el backend devuelve una copia profunda de EXAMS, sin respuestas correctas","Al entregar, <code>POST /exams/modulo1/submit</code> corre <code>calculate_score()</code> contra el EXAMS original","Se inserta un <code>ExamResult</code> (score + detail JSON) en Postgres y la SPA muestra el resultado"]
+  },
+  admin: {
+    name: "Panel de administrador",
+    edges: ["e1","e2","e5","e7","e9","e14","e15"],
+    nodes: ["browser","spa","appjsx","admincomp","apijs","routeradmin","dbmodels","postgres"],
+    steps: ["Gerardo abre la pestaña Admin; App.jsx cambia a <code>page=\"admin\"</code>","AdminPage hace su propio fetch a <code>GET /admin/results</code>, independiente del flujo de examen","routers/admin.py consulta <code>ExamResult</code> ordenado por fecha y lo devuelve","Al hacer clic en \"Ver\", un segundo fetch trae el detalle para el modal"]
+  },
+  "deploy-be": {
+    name: "Deploy del backend",
+    edges: ["e18","e19"],
+    nodes: ["dockerfile","cloudrun","postgres"],
+    steps: ["Desde <code>backend/</code> se corre <code>gcloud run deploy --source .</code>, que construye la imagen con el Dockerfile","Cloud Run levanta el contenedor escuchando en <code>$PORT</code>","Si usa Cloud SQL, la instancia se conecta con <code>--add-cloudsql-instances</code>"]
+  },
+  "deploy-fe": {
+    name: "Deploy del frontend",
+    edges: ["e20","e21"],
+    nodes: ["spa","statichost","cloudrun","apijs"],
+    steps: ["<code>npm run build</code> genera <code>frontend/dist/</code> con <code>VITE_API_URL</code> inyectado en build time","Esa variable debe apuntar a la URL real de Cloud Run <b>antes</b> de buildear — no se puede cambiar después","<code>dist/</code> se sube a cualquier hosting estático (Firebase, Cloud Storage + CDN)"]
+  }
+};
+
+const stage = document.getElementById('stage');
+const nodes = document.querySelectorAll('.node');
+const edges = document.querySelectorAll('.edge');
+const elbls = document.querySelectorAll('.elbl');
+const chips = document.querySelectorAll('.chip');
+const fcap = document.getElementById('flowcap');
+
+function setFlow(key) {
+  chips.forEach(c => c.classList.toggle('on', c.dataset.flow === key));
+  edges.forEach(e => e.classList.remove('lit'));
+  elbls.forEach(l => l.classList.remove('lit'));
+  nodes.forEach(n => n.classList.remove('lit'));
+  if (key === 'all') { stage.classList.remove('flowing'); fcap.classList.remove('show'); return; }
+  const f = FLOWS[key];
+  stage.classList.add('flowing');
+  f.edges.forEach(id => document.getElementById(id)?.classList.add('lit'));
+  elbls.forEach(l => { if (f.edges.includes(l.dataset.e)) l.classList.add('lit'); });
+  f.nodes.forEach(k => document.querySelector(`.node[data-k="${k}"]`)?.classList.add('lit'));
+  document.getElementById('f-name').textContent = f.name;
+  document.getElementById('f-steps').innerHTML = f.steps.map(s => `<li>${s}</li>`).join('');
+  fcap.classList.add('show');
+}
+chips.forEach(c => c.addEventListener('click', () => setFlow(c.dataset.flow)));
+
+nodes.forEach(n => n.addEventListener('click', () => {
+  nodes.forEach(x => x.classList.remove('sel'));
+  n.classList.add('sel');
+  const d = DETAIL[n.dataset.k];
+  if (!d) return;
+  document.getElementById('d-title').textContent = d.t;
+  document.getElementById('d-meta').textContent = d.m;
+  document.getElementById('d-body').innerHTML = d.b;
+}));
+
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const dark = !document.documentElement.classList.contains('dark');
+  document.documentElement.classList.toggle('dark', dark);
+  localStorage.setItem('theme', dark ? 'dark' : 'light');
+});
+</script>
+</body>
+</html>
